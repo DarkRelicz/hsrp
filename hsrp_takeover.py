@@ -1,7 +1,4 @@
 '''
-**to write tool desc**
-Our tool will be focusing on HSRP version 1.
-
 Functions:
 - sniff 
     -- able to sniff the network and look for presence of HSRP 
@@ -12,10 +9,6 @@ Functions:
     -- allows the attacking machine to takeover as the active HSRP router, using one of the 2 configurations
         -> default (use values in Packet class)
         -> user-supplied variables
-
-- sslstrip
-    -- ?
-
 '''
 
 from scapy.all import *
@@ -144,9 +137,6 @@ def main():
             hsrp_v1(mal_pkt)
         elif arg.version == 2:
             print("currently not supported")
-
-    elif arg.sslstrip:
-        print('ssltripthnxkeith:)')
 
 
 
