@@ -87,6 +87,7 @@ def process_pkt(pkt):
             f"Source IP - {pkt[IP].src}\n"+
             f"Virtual IP - {pkt[HSRP].virtualIP}\n"+
             f"Priority - {pkt[HSRP].priority}\n"+
+            f"Authentication - {pkt[HSRP].auth}\n"+
             "Vulnerable - Yes")
             return None  
     else:
@@ -135,7 +136,8 @@ def main():
             hsrp_v1(mal_pkt)
         elif arg.version == 2:
             print("currently not supported")
-
+    else:
+        print("Please enter an argument.")
 
 
 if __name__ == '__main__':
